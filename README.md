@@ -296,6 +296,7 @@ The application includes several endpoints for monitoring:
 - [API Documentation](API_DOCUMENTATION.md) - Complete API reference
 - [User Guide](USER_GUIDE.md) - Detailed user instructions
 - [Deployment Guide](DEPLOYMENT_GUIDE.md) - Deployment instructions
+- [GitHub Setup Instructions](GITHUB_SETUP_INSTRUCTIONS.md) - Instructions for setting up GitHub repository
 - [Contributing Guide](CONTRIBUTING.md) - How to contribute to the project
 
 ## Contributing
