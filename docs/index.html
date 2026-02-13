@@ -91,6 +91,12 @@
             text-align: center;
             color: #7f8c8d;
         }
+        
+        /* Spinner animation for loading states */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -191,7 +197,7 @@
             event.target.classList.add('active');
         }
 
-        function generateKDCode() {
+        async function generateKDCode() {
             const text = document.getElementById('textInput').value;
             const segmentsPerRing = document.getElementById('segmentsPerRing').value;
             const anchorRadius = document.getElementById('anchorRadius').value;
@@ -203,86 +209,76 @@
                 return;
             }
 
-            // Create canvas for KD-Code
-            const canvas = document.createElement('canvas');
-            const size = 300 * scaleFactor;
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw concentric circles to simulate a KD-Code
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const radius = Math.min(canvas.width, canvas.height) / 2 - 10;
-
-            // Draw anchor circle
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 20 * scaleFactor, 0, 2 * Math.PI);
-            ctx.fillStyle = 'black';
-            ctx.fill();
-
-            // Draw orientation indicator (triangle)
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY - 20 * scaleFactor);
-            ctx.lineTo(centerX - 10 * scaleFactor, centerY - 5 * scaleFactor);
-            ctx.lineTo(centerX + 10 * scaleFactor, centerY - 5 * scaleFactor);
-            ctx.closePath();
-            ctx.fillStyle = 'red';
-            ctx.fill();
-
-            // Draw data rings
-            const rings = 5;
-            const segments = parseInt(segmentsPerRing);
-
-            for (let r = 0; r < rings; r++) {
-                const ringRadius = (30 + r * 25) * scaleFactor;
-
-                for (let s = 0; s < segments; s++) {
-                    const angle = (s / segments) * 2 * Math.PI;
-                    const nextAngle = ((s + 1) / segments) * 2 * Math.PI;
-
-                    // Alternate between filled and unfilled segments to simulate data
-                    if (Math.random() > 0.5) {
-                        ctx.beginPath();
-                        ctx.moveTo(centerX, centerY);
-                        ctx.arc(centerX, centerY, ringRadius, angle, nextAngle);
-                        ctx.closePath();
-                        ctx.fillStyle = 'black';
-                        ctx.fill();
-                    }
-                }
-            }
-
-            // Draw outer ring
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, (radius - 5) * scaleFactor, 0, 2 * Math.PI);
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2 * scaleFactor;
-            ctx.stroke();
-
-            // Display the generated KD-Code
+            // Show generating status
             const resultDiv = document.getElementById('genResult');
             resultDiv.innerHTML = `
-                <p>Generated KD-Code for: "${text.substring(0, 20)}${text.length > 20 ? '...' : ''}"</p>
-                <div class="kd-code-container">
-                    <canvas id="kdCanvas" width="${size}" height="${size}"></canvas>
-                    <br>
-                    <button class="download-btn" onclick="downloadKDCode('${text.substring(0, 10).replace(/[^a-zA-Z0-9]/g, '_')}')">Download KD-Code</button>
+                <p>Generating KD-Code for: "${text.substring(0, 20)}${text.length > 20 ? '...' : ''}"</p>
+                <div style="text-align: center; padding: 20px;">
+                    <div class="spinner" style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p>Generating...</p>
                 </div>
             `;
-            
-            // Put the generated image onto the displayed canvas
-            const displayCanvas = document.getElementById('kdCanvas');
-            const displayCtx = displayCanvas.getContext('2d');
-            displayCtx.drawImage(canvas, 0, 0, displayCanvas.width, displayCanvas.height);
-            
-            // Store the generated image data for download
-            window.generatedImageData = canvas.toDataURL('image/png');
+
+            try {
+                // Send the request to the backend API
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        segments_per_ring: parseInt(segmentsPerRing),
+                        anchor_radius: parseInt(anchorRadius),
+                        ring_width: parseInt(ringWidth),
+                        scale_factor: parseInt(scaleFactor),
+                        max_chars: 128
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.status === 'success' && data.image) {
+                    // Display the generated KD-Code
+                    resultDiv.innerHTML = `
+                        <p>Generated KD-Code for: "${text.substring(0, 20)}${text.length > 20 ? '...' : ''}"</p>
+                        <div class="kd-code-container">
+                            <img id="kdCodeImg" src="data:image/png;base64,${data.image}" alt="Generated KD-Code" style="max-width: 100%; height: auto;">
+                            <br>
+                            <button class="download-btn" onclick="downloadKDCodeFromData('${data.image}', '${text.substring(0, 10).replace(/[^a-zA-Z0-9]/g, '_')}')">Download KD-Code</button>
+                        </div>
+                    `;
+                    
+                    // Store the generated image data for download
+                    window.generatedImageData = `data:image/png;base64,${data.image}`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p>Generation failed.</p>
+                        <div style="background-color: #ffe8e8; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                            <strong>Error:</strong> ${data.error || 'Unknown error occurred'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Generation error:', error);
+                resultDiv.innerHTML = `
+                    <p>Generation failed.</p>
+                    <div style="background-color: #ffe8e8; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        function downloadKDCodeFromData(imageData, filename) {
+            const link = document.createElement('a');
+            link.download = `KD-Code-${filename || 'generated'}.png`;
+            link.href = `data:image/png;base64,${imageData}`;
+            link.click();
         }
         
         function downloadKDCode(filename) {
@@ -316,23 +312,67 @@
             }
         }
 
-        function scanKDCode() {
+        async function scanKDCode() {
             if (!window.uploadedImageFile) {
                 alert('Please upload an image file first');
                 return;
             }
 
-            // In a real implementation, this would call your backend API
-            // For now, we'll simulate a scan result based on the uploaded file
-
+            // Show scanning status
             const resultDiv = document.getElementById('scanResult');
             resultDiv.innerHTML = `
                 <p>Scanning uploaded image...</p>
-                <div style="background-color: #e8f4fd; padding: 15px; border-radius: 5px; margin-top: 10px;">
-                    <strong>Simulated Result:</strong> This is a simulated scan result. In the full application, this would show the actual decoded text from your KD-Code image.
+                <div style="text-align: center; padding: 20px;">
+                    <div class="spinner" style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p>Processing...</p>
                 </div>
-                <p>File: ${window.uploadedImageFile.name}</p>
             `;
+
+            // Create FormData to send the file
+            const formData = new FormData();
+            formData.append('frame', window.uploadedImageFile);
+            formData.append('segments_per_ring', document.getElementById('segmentsPerRing').value || 16);
+            formData.append('min_anchor_radius', document.getElementById('anchorRadius').value || 5);
+            formData.append('max_anchor_radius', document.getElementById('ringWidth').value || 100);
+
+            try {
+                // Send the image to the backend API
+                const response = await fetch('/api/scan', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.data) {
+                    resultDiv.innerHTML = `
+                        <p>Successfully scanned!</p>
+                        <div style="background-color: #e8f4fd; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                            <strong>Decoded Text:</strong> ${data.data}
+                        </div>
+                        <p>File: ${window.uploadedImageFile.name}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p>Scanning completed but no KD-Code detected.</p>
+                        <div style="background-color: #ffe8e8; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                            <strong>Error:</strong> ${data.error || 'No KD-Code found in image'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Scan error:', error);
+                resultDiv.innerHTML = `
+                    <p>Scanning failed.</p>
+                    <div style="background-color: #ffe8e8; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
         }
 
         let videoStream = null;
