@@ -1,0 +1,44 @@
+# Shopify App Configuration for KD-Code Integration
+
+[app]
+name = "KD-Code Generator"
+client_id = "YOUR_SHOPIFY_APP_API_KEY"
+application_url = "https://yourdomain.com"
+embedded = true
+
+[auth]
+redirect_urls = [
+  "https://yourdomain.com/auth/callback"
+]
+
+[webhooks]
+api_version = "2023-07"
+privacy_compliance = true
+
+[[webhooks.subscriptions]]
+topic = "products/create"
+uri = "https://yourdomain.com/webhooks/shopify/product-create"
+
+[[webhooks.subscriptions]]
+topic = "orders/create"
+uri = "https://yourdomain.com/webhooks/shopify/order-create"
+
+[access_scopes]
+# Define the scopes your app needs
+scopes = "read_products,write_products,read_orders,write_orders"
+
+[pos]
+embedded = false
+
+[privacy_compliance_webhooks]
+customer_deletion_url = "https://yourdomain.com/webhooks/shopify/customer-deletion"
+customer_data_request_url = "https://yourdomain.com/webhooks/shopify/customer-data-request"
+shop_deletion_url = "https://yourdomain.com/webhooks/shopify/shop-deletion"
+
+[extension]
+name = "KD-Code Generator"
+type = "ui_extension"
+targets = [
+  "admin.product-details.action-menu",
+  "admin.order-details.action-menu"
+]

@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KD-Code System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .kd-code-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+            border: 1px dashed #ccc;
+            border-radius: 8px;
+            margin: 20px 0;
+            background-color: #f9f9f9;
+        }
+        
+        .kd-code-image {
+            max-width: 100%;
+            max-height: 300px;
+        }
+        
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        #videoElement {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        
+        .tab-button {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button.active {
+            border-bottom: 3px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Theme-specific styles */
+        .theme-light {
+            --bg-primary: #f9fafb;
+            --bg-secondary: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --accent-color: #3b82f6;
+        }
+        
+        .theme-dark {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --border-color: #374151;
+            --accent-color: #60a5fa;
+        }
+        
+        body[data-theme="dark"] {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        body[data-theme="dark"] .bg-gray-100 {
+            background-color: var(--bg-primary);
+        }
+        
+        body[data-theme="dark"] .bg-white {
+            background-color: var(--bg-secondary) !important;
+        }
+        
+        body[data-theme="dark"] .text-gray-800 {
+            color: var(--text-primary) !important;
+        }
+        
+        body[data-theme="dark"] .text-gray-600 {
+            color: var(--text-secondary) !important;
+        }
+        
+        body[data-theme="dark"] .border-gray-300 {
+            border-color: var(--border-color) !important;
+        }
+        
+        body[data-theme="dark"] .bg-gray-50 {
+            background-color: var(--bg-secondary) !important;
+        }
+        
+        body[data-theme="dark"] .text-green-600 {
+            color: #34d399 !important;
+        }
+        
+        body[data-theme="dark"] .text-red-500 {
+            color: #f87171 !important;
+        }
+        
+        body[data-theme="dark"] .text-gray-500 {
+            color: var(--text-secondary) !important;
+        }
+        
+        /* Accessibility improvements */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        .focusable:focus {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+        
+        .high-contrast {
+            border: 2px solid;
+        }
+        
+        /* Mobile responsive improvements */
+        @media (max-width: 768px) {
+            .container {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+            
+            .tab-button {
+                padding: 8px 12px;
+                font-size: 0.875rem;
+            }
+            
+            .tab-content {
+                padding: 1rem;
+            }
+            
+            .camera-container {
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            #videoElement {
+                max-width: 100%;
+            }
+            
+            .text-4xl {
+                font-size: 1.5rem;
+            }
+            
+            .max-w-4xl {
+                max-width: 100%;
+            }
+            
+            .flex-col-mobile {
+                flex-direction: column;
+            }
+            
+            .mr-3 {
+                margin-right: 0.5rem;
+            }
+            
+            .mb-4 {
+                margin-bottom: 1rem;
+            }
+            
+            /* Adjust scan result area for mobile */
+            #scanResult {
+                min-height: 100px;
+                height: auto;
+            }
+            
+            /* Make buttons more touch-friendly */
+            button {
+                min-height: 44px; /* Minimum touch target size */
+                min-width: 44px;
+            }
+            
+            .p-2 {
+                padding: 0.5rem;
+            }
+            
+            .px-6 {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            .py-2 {
+                padding-top: 0.5rem;
+                padding-bottom: 0.5rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .tab-button {
+                padding: 6px 8px;
+                font-size: 0.8rem;
+            }
+            
+            .text-2xl {
+                font-size: 1.25rem;
+            }
+            
+            /* Stack buttons vertically on very small screens */
+            [role="toolbar"] {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            [role="toolbar"] button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen" data-theme="light">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-4xl font-bold text-gray-800">KD-Code System</h1>
+                <!-- Theme Toggle Button -->
+                <button id="themeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 focusable" aria-label="Toggle dark mode">
+                    <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path id="sunIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        <path id="moonIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" class="hidden" />
+                    </svg>
+                </button>
+            </div>
+            <p class="text-gray-600">A novel circular barcode system</p>
+        </header>
+
+        <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+            <!-- Tabs -->
+            <div class="flex border-b" role="tablist" aria-label="Main navigation">
+                <button 
+                    class="tab-button active focusable" 
+                    data-tab="generator" 
+                    role="tab" 
+                    aria-selected="true" 
+                    aria-controls="generator"
+                    id="generator-tab"
+                >
+                    Generator 🖼️
+                </button>
+                <button 
+                    class="tab-button focusable" 
+                    data-tab="scanner" 
+                    role="tab" 
+                    aria-selected="false" 
+                    aria-controls="scanner"
+                    id="scanner-tab"
+                    tabindex="-1"
+                >
+                    Scanner 📷
+                </button>
+            </div>
+
+            <!-- Generator Tab -->
+            <div 
+                id="generator" 
+                class="tab-content active p-6" 
+                role="tabpanel" 
+                aria-labelledby="generator-tab"
+                tabindex="0"
+            >
+                <h2 class="text-2xl font-semibold mb-4">Generate KD-Code</h2>
+                <div class="mb-4">
+                    <label for="textInput" class="block text-gray-700 mb-2">Enter text or URL:</label>
+                    <input 
+                        type="text" 
+                        id="textInput" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focusable" 
+                        placeholder="Enter text to encode..."
+                        maxlength="128"
+                        aria-describedby="textInput-help"
+                        autocomplete="off"
+                    >
+                    <span id="textInput-help" class="sr-only">Enter the text or URL you want to encode in a KD-Code</span>
+                </div>
+                <button 
+                    id="generateBtn" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-lg transition duration-300 focusable"
+                    aria-describedby="generateBtn-status"
+                >
+                    Generate KD-Code
+                </button>
+                
+                <div id="generatedCodeContainer" class="mt-6" role="region" aria-label="Generated KD-Code display">
+                    <div class="kd-code-container" role="img" aria-label="Generated KD-Code image">
+                        <p class="text-gray-500">Generated KD-Code will appear here</p>
+                    </div>
+                    <div class="text-center mt-4">
+                        <button 
+                            id="downloadBtn" 
+                            class="hidden bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-6 rounded-lg transition duration-300 focusable"
+                            disabled
+                            aria-describedby="downloadBtn-help"
+                        >
+                            Download KD-Code
+                        </button>
+                        <span id="downloadBtn-help" class="sr-only">Download the generated KD-Code as a PNG image</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scanner Tab -->
+            <div 
+                id="scanner" 
+                class="tab-content p-6" 
+                role="tabpanel" 
+                aria-labelledby="scanner-tab"
+                tabindex="0"
+            >
+                <h2 class="text-2xl font-semibold mb-4">Scan KD-Code</h2>
+                <div class="camera-container" role="group" aria-label="Camera controls">
+                    <video 
+                        id="videoElement" 
+                        autoplay 
+                        playsinline
+                        aria-label="Camera preview"
+                        class="focusable"
+                    ></video>
+                    <canvas id="overlayCanvas" aria-hidden="true"></canvas>
+                </div>
+                
+                <div class="mt-4" role="toolbar" aria-label="Camera controls">
+                    <button 
+                        id="startCameraBtn" 
+                        class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-6 rounded-lg transition duration-300 focusable mr-3"
+                    >
+                        Start Camera
+                    </button>
+                    <button 
+                        id="stopCameraBtn" 
+                        class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-6 rounded-lg transition duration-300 focusable"
+                        disabled
+                    >
+                        Stop Camera
+                    </button>
+                </div>
+                
+                <div class="mt-6" role="region" aria-label="Scan results">
+                    <label for="scanResult" class="block text-gray-700 mb-2">Scanned Result:</label>
+                    <div 
+                        id="scanResult" 
+                        class="w-full h-32 p-4 border border-gray-300 rounded-lg bg-gray-50 overflow-y-auto focusable"
+                        tabindex="0"
+                        role="log"
+                        aria-live="polite"
+                    >
+                        <p class="text-gray-500">Scanned text will appear here...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tutorial system
+        class TutorialSystem {
+            constructor() {
+                this.steps = [
+                    {
+                        title: "Welcome to KD-Code System",
+                        content: "This tutorial will guide you through the features of the KD-Code system.",
+                        element: "header",
+                        position: "bottom"
+                    },
+                    {
+                        title: "Generator Tab",
+                        content: "Click here to switch to the Generator tab where you can create new KD-Codes.",
+                        element: "#generator-tab",
+                        position: "bottom"
+                    },
+                    {
+                        title: "Enter Text",
+                        content: "Type the text or URL you want to encode in this field.",
+                        element: "#textInput",
+                        position: "bottom"
+                    },
+                    {
+                        title: "Generate Button",
+                        content: "Click this button to generate your KD-Code.",
+                        element: "#generateBtn",
+                        position: "bottom"
+                    },
+                    {
+                        title: "Generated Code",
+                        content: "Your generated KD-Code will appear here.",
+                        element: "#generatedCodeContainer",
+                        position: "bottom"
+                    },
+                    {
+                        title: "Scanner Tab",
+                        content: "Switch to the Scanner tab to scan existing KD-Codes.",
+                        element: "#scanner-tab",
+                        position: "bottom"
+                    },
+                    {
+                        title: "Camera Controls",
+                        content: "Use these buttons to start and stop the camera for scanning.",
+                        element: "[role='toolbar']",
+                        position: "bottom"
+                    },
+                    {
+                        title: "Scan Results",
+                        content: "Scanned text will appear here after successful scanning.",
+                        element: "#scanResult",
+                        position: "bottom"
+                    },
+                    {
+                        title: "Theme Toggle",
+                        content: "Switch between light and dark mode using this button.",
+                        element: "#themeToggle",
+                        position: "bottom"
+                    }
+                ];
+                
+                this.currentStep = 0;
+                this.isActive = false;
+            }
+            
+            start() {
+                this.isActive = true;
+                this.currentStep = 0;
+                this.showStep();
+            }
+            
+            showStep() {
+                if (!this.isActive) return;
+                
+                const step = this.steps[this.currentStep];
+                this.highlightElement(step.element);
+                this.showTooltip(step.title, step.content, step.position);
+            }
+            
+            highlightElement(selector) {
+                // Remove previous highlights
+                const prevHighlight = document.querySelector('.tutorial-highlight');
+                if (prevHighlight) prevHighlight.remove();
+                
+                const element = typeof selector === 'string' ? 
+                    document.querySelector(selector) : selector;
+                
+                if (!element) return;
+                
+                // Create highlight overlay
+                const highlight = document.createElement('div');
+                highlight.className = 'tutorial-highlight';
+                highlight.style.cssText = `
+                    position: absolute;
+                    z-index: 10000;
+                    border: 3px solid #3b82f6;
+                    border-radius: 8px;
+                    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+                    pointer-events: none;
+                `;
+                
+                const rect = element.getBoundingClientRect();
+                highlight.style.width = `${rect.width}px`;
+                highlight.style.height = `${rect.height}px`;
+                highlight.style.top = `${rect.top}px`;
+                highlight.style.left = `${rect.left}px`;
+                
+                document.body.appendChild(highlight);
+                
+                // Scroll element into view if needed
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            showTooltip(title, content, position) {
+                // Remove previous tooltip
+                const prevTooltip = document.querySelector('.tutorial-tooltip');
+                if (prevTooltip) prevTooltip.remove();
+                
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tutorial-tooltip';
+                tooltip.style.cssText = `
+                    position: absolute;
+                    z-index: 10001;
+                    background: white;
+                    color: black;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                    max-width: 300px;
+                    font-size: 14px;
+                    border: 1px solid #e5e7eb;
+                `;
+                
+                tooltip.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 0.5rem;">${title}</div>
+                    <div style="margin-bottom: 1rem;">${content}</div>
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button id="tutorial-prev" style="padding: 0.25rem 0.5rem; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer;">Prev</button>
+                        <button id="tutorial-next" style="padding: 0.25rem 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">${this.currentStep === this.steps.length - 1 ? 'Finish' : 'Next'}</button>
+                    </div>
+                `;
+                
+                // Position tooltip
+                const element = document.querySelector(this.steps[this.currentStep].element);
+                if (element) {
+                    const rect = element.getBoundingClientRect();
+                    tooltip.style.top = position === 'bottom' ? 
+                        `${rect.bottom + 10}px` : 
+                        `${rect.top - tooltip.offsetHeight - 10}px`;
+                    tooltip.style.left = `${rect.left}px`;
+                }
+                
+                document.body.appendChild(tooltip);
+                
+                // Add event listeners
+                document.getElementById('tutorial-prev').onclick = () => this.prevStep();
+                document.getElementById('tutorial-next').onclick = () => this.nextStep();
+            }
+            
+            nextStep() {
+                if (this.currentStep < this.steps.length - 1) {
+                    this.currentStep++;
+                    this.showStep();
+                } else {
+                    this.end();
+                }
+            }
+            
+            prevStep() {
+                if (this.currentStep > 0) {
+                    this.currentStep--;
+                    this.showStep();
+                }
+            }
+            
+            end() {
+                this.isActive = false;
+                const highlight = document.querySelector('.tutorial-highlight');
+                const tooltip = document.querySelector('.tutorial-tooltip');
+                if (highlight) highlight.remove();
+                if (tooltip) tooltip.remove();
+            }
+        }
+
+        // Theme management
+        function setTheme(themeName) {
+            localStorage.setItem('theme', themeName);
+            document.body.setAttribute('data-theme', themeName);
+            
+            const sunIcon = document.getElementById('sunIcon');
+            const moonIcon = document.getElementById('moonIcon');
+            
+            if (themeName === 'dark') {
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+        }
+
+        // Toggle between light and dark theme
+        function toggleTheme() {
+            if (localStorage.getItem('theme') === 'dark') {
+                setTheme('light');
+            } else {
+                setTheme('dark');
+            }
+        }
+
+        // Initialize theme based on user preference or system preference
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+            
+            if (savedTheme) {
+                setTheme(savedTheme);
+            } else if (prefersDarkScheme.matches) {
+                setTheme('dark');
+            } else {
+                setTheme('light');
+            }
+        })();
+
+        // Add event listener to theme toggle button
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+        // Initialize tutorial system
+        const tutorial = new TutorialSystem();
+
+        // Add tutorial button to header
+        const headerDiv = document.querySelector('header div');
+        const tutorialBtn = document.createElement('button');
+        tutorialBtn.id = 'tutorialBtn';
+        tutorialBtn.className = 'p-2 rounded-full bg-gray-200 dark:bg-gray-700 focusable';
+        tutorialBtn.setAttribute('aria-label', 'Start tutorial');
+        tutorialBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        `;
+        tutorialBtn.onclick = () => tutorial.start();
+        headerDiv.appendChild(tutorialBtn);
+
+        // Tab switching functionality
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.getAttribute('data-tab');
+                
+                // Update active tab button
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                button.classList.add('active');
+                
+                // Show active tab content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(tabName).classList.add('active');
+            });
+        });
+
+        // Generator functionality
+        const textInput = document.getElementById('textInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const generatedCodeContainer = document.getElementById('generatedCodeContainer');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        generateBtn.addEventListener('click', async () => {
+            const text = textInput.value.trim();
+            if (!text) {
+                alert('Please enter text to encode');
+                return;
+            }
+
+            try {
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Generating...';
+
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // Display the generated KD-Code
+                    const img = document.createElement('img');
+                    img.src = `data:image/png;base64,${result.image}`;
+                    img.alt = 'Generated KD-Code';
+                    img.className = 'kd-code-image';
+                    
+                    // Clear previous content and add new image
+                    const container = generatedCodeContainer.querySelector('.kd-code-container');
+                    container.innerHTML = '';
+                    container.appendChild(img);
+                    
+                    // Enable download button
+                    downloadBtn.classList.remove('hidden');
+                    downloadBtn.disabled = false;
+                    
+                    // Set download functionality
+                    downloadBtn.onclick = () => {
+                        const link = document.createElement('a');
+                        link.href = img.src;
+                        link.download = 'kd-code.png';
+                        link.click();
+                    };
+                } else {
+                    alert(`Error: ${result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error generating KD-Code:', error);
+                alert('Error generating KD-Code. Please try again.');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate KD-Code';
+            }
+        });
+
+        // Scanner functionality
+        const videoElement = document.getElementById('videoElement');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const startCameraBtn = document.getElementById('startCameraBtn');
+        const stopCameraBtn = document.getElementById('stopCameraBtn');
+        const scanResult = document.getElementById('scanResult');
+        const cameraStatus = document.createElement('div');
+        cameraStatus.id = 'cameraStatus';
+        cameraStatus.className = 'text-center mt-2 text-sm text-gray-500';
+        startCameraBtn.parentNode.insertBefore(cameraStatus, stopCameraBtn.nextSibling);
+
+        let stream = null;
+        let scanningActive = false;
+        let lastDetectionTime = 0;
+        const DETECTION_DEBOUNCE = 1000; // ms to wait between detections
+
+        // Set canvas dimensions to match video
+        function setupCanvas() {
+            const videoRect = videoElement.getBoundingClientRect();
+            overlayCanvas.width = videoRect.width;
+            overlayCanvas.height = videoRect.height;
+            overlayCanvas.style.width = `${videoRect.width}px`;
+            overlayCanvas.style.height = `${videoRect.height}px`;
+        }
+
+        // Update camera status display
+        function updateCameraStatus(message, isError = false) {
+            cameraStatus.textContent = message;
+            cameraStatus.className = isError ? 
+                'text-center mt-2 text-sm text-red-500' : 
+                'text-center mt-2 text-sm text-gray-500';
+        }
+
+        // Start camera
+        startCameraBtn.addEventListener('click', async () => {
+            try {
+                updateCameraStatus('Accessing camera...');
+                
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                
+                videoElement.srcObject = stream;
+                
+                startCameraBtn.disabled = true;
+                stopCameraBtn.disabled = false;
+                
+                // Start scanning once video is loaded
+                videoElement.onloadedmetadata = () => {
+                    setupCanvas();
+                    scanningActive = true;
+                    updateCameraStatus('Scanning for KD-Codes...');
+                    scanFrame();
+                };
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                let errorMsg = 'Could not access the camera.';
+                if (error.name === 'NotAllowedError') {
+                    errorMsg = 'Camera access denied. Please allow camera permissions.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMsg = 'No camera found on this device.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMsg = 'Camera is being used by another application.';
+                }
+                updateCameraStatus(errorMsg, true);
+                alert(errorMsg);
+                
+                startCameraBtn.disabled = false;
+                stopCameraBtn.disabled = true;
+            }
+        });
+
+        // Stop camera
+        stopCameraBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            scanningActive = false;
+            videoElement.srcObject = null;
+            
+            startCameraBtn.disabled = false;
+            stopCameraBtn.disabled = true;
+            
+            // Clear canvas and status
+            const ctx = overlayCanvas.getContext('2d');
+            ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            updateCameraStatus('');
+            
+            scanResult.innerHTML = '<p class="text-gray-500">Scanned text will appear here...</p>';
+        });
+
+        // Scan a single frame
+        async function scanFrame() {
+            if (!scanningActive) return;
+            
+            // Throttle scanning to ~5 FPS
+            setTimeout(async () => {
+                if (!scanningActive) return;
+                
+                try {
+                    // Capture frame as image
+                    const canvas = document.createElement('canvas');
+                    canvas.width = videoElement.videoWidth;
+                    canvas.height = videoElement.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                    
+                    // Convert to base64
+                    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // Send to backend for scanning
+                    const response = await fetch('/api/scan', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ image: imageData })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        const currentTime = Date.now();
+                        // Debounce detections to avoid spamming the same result
+                        if (currentTime - lastDetectionTime > DETECTION_DEBOUNCE) {
+                            scanResult.innerHTML = `<p class="text-green-600 font-medium break-words">${result.data}</p>`;
+                            lastDetectionTime = currentTime;
+                            
+                            // Draw detection overlay with animation
+                            drawDetectionOverlay(true);
+                            
+                            // Play success sound if possible
+                            playDetectionSound();
+                        }
+                    } else {
+                        // Clear previous detection overlay
+                        const ctx = overlayCanvas.getContext('2d');
+                        ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                        
+                        // Only update status if there's an error message
+                        if (result.error) {
+                            updateCameraStatus(`Detection issue: ${result.error}`, true);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error scanning frame:', error);
+                    updateCameraStatus('Error scanning frame', true);
+                }
+                
+                // Continue scanning
+                scanFrame();
+            }, 200); // ~5 FPS
+        }
+
+        // Draw detection overlay on canvas
+        function drawDetectionOverlay(success = false) {
+            const ctx = overlayCanvas.getContext('2d');
+            const rect = overlayCanvas.getBoundingClientRect();
+            
+            // Clear previous drawings
+            ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            
+            // Draw a circle to represent detected KD-Code
+            ctx.beginPath();
+            ctx.arc(
+                overlayCanvas.width / 2, 
+                overlayCanvas.height / 2, 
+                Math.min(overlayCanvas.width, overlayCanvas.height) * 0.3, 
+                0, 
+                2 * Math.PI
+            );
+            
+            // Use different colors based on success
+            ctx.strokeStyle = success ? '#10B981' : '#3b82f6'; // green for success, blue for detection
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Draw orientation indicator (line pointing up)
+            ctx.beginPath();
+            ctx.moveTo(overlayCanvas.width / 2, overlayCanvas.height / 2);
+            ctx.lineTo(overlayCanvas.width / 2, overlayCanvas.height / 2 - Math.min(overlayCanvas.width, overlayCanvas.height) * 0.3);
+            ctx.strokeStyle = '#EF4444'; // red for orientation
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Draw center dot
+            ctx.beginPath();
+            ctx.arc(overlayCanvas.width / 2, overlayCanvas.height / 2, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#EF4444'; // red center
+            ctx.fill();
+        }
+        
+        // Play a subtle sound when a KD-Code is detected
+        function playDetectionSound() {
+            try {
+                const context = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = context.createOscillator();
+                const gainNode = context.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(context.destination);
+                
+                oscillator.frequency.value = 800; // Frequency in hertz
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, context.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
+                
+                oscillator.start(context.currentTime);
+                oscillator.stop(context.currentTime + 0.5);
+            } catch (e) {
+                // Audio API not supported, ignore
+            }
+        }
+    </script>
+
+    <script>
+        // Register service worker for offline functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }, function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+
+        // Check for online/offline status
+        window.addEventListener('load', function() {
+            const updateOnlineStatus = function() {
+                const statusElement = document.createElement('div');
+                statusElement.id = 'connection-status';
+                statusElement.style.position = 'fixed';
+                statusElement.style.top = '10px';
+                statusElement.style.right = '10px';
+                statusElement.style.padding = '5px 10px';
+                statusElement.style.borderRadius = '4px';
+                statusElement.style.zIndex = '10000';
+                
+                if (navigator.onLine) {
+                    statusElement.style.backgroundColor = '#d4edda';
+                    statusElement.style.color = '#155724';
+                    statusElement.textContent = 'Online';
+                } else {
+                    statusElement.style.backgroundColor = '#f8d7da';
+                    statusElement.style.color = '#721c24';
+                    statusElement.textContent = 'Offline';
+                }
+                
+                // Remove any existing status element
+                const existingStatus = document.getElementById('connection-status');
+                if (existingStatus) {
+                    existingStatus.remove();
+                }
+                
+                document.body.appendChild(statusElement);
+            };
+
+            updateOnlineStatus();
+            
+            window.addEventListener('online', updateOnlineStatus);
+            window.addEventListener('offline', updateOnlineStatus);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+/*
+ * KD-Code WordPress Plugin Styles
+ * CSS for KD-Code display and generation
+ */
+
+/* KD-Code container styles */
+.kdcode-container {
+    display: inline-block;
+    text-align: center;
+    margin: 20px 0;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+.kdcode-large {
+    max-width: 300px;
+}
+
+.kdcode-medium {
+    max-width: 200px;
+}
+
+.kdcode-small {
+    max-width: 100px;
+}
+
+.kdcode-image {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Display container styles */
+.kdcode-display-container {
+    margin: 15px 0;
+    padding: 10px;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.kdcode-display-image {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+/* Admin styles */
+.kdcode-admin-container {
+    margin: 20px 0;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+
+.kdcode-admin-header {
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+/* Product page styles */
+.product-kdcode-section {
+    margin: 20px 0;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+}
+
+.product-kdcode-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.product-kdcode-image {
+    max-width: 200px;
+    height: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .kdcode-container {
+        max-width: 100%;
+        padding: 10px;
+    }
+    
+    .product-kdcode-image {
+        max-width: 150px;
+    }
+}
+
+/* Loading animation */
+.kdcode-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0,0,0,.1);
+    border-radius: 50%;
+    border-top-color: #0073aa;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Error styles */
+.kdcode-error {
+    color: #d63638;
+    background-color: #faebeb;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 4px solid #d63638;
+}
