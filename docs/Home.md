@@ -38,4 +38,19 @@ The system includes over 100 advanced features including:
 - Multiple platform integrations
 - And much more!
 
-For detailed information about each feature, see the corresponding documentation pages.
+## Wiki Sections
+
+For detailed information about each feature and topic, explore our comprehensive wiki:
+
+- [Introduction to KD-Code](Introduction-to-KD-Code) - Learn about the core technology
+- [Comparison With Other Systems](Comparison-With-Other-Systems) - How KD-Code compares to QR codes and other visual sync systems
+- [Business Opportunities](Business-Opportunities) - Market potential and revenue opportunities
+- [API Reference](API-Reference) - Complete API documentation
+- [Tutorials](Tutorials) - Step-by-step guides
+- [Examples](Examples) - Practical use cases
+- [FAQ](FAQ) - Frequently asked questions
+- [Troubleshooting](Troubleshooting) - Common issues and solutions
+
+## Try the Demo
+
+Experience the power of KD-Codes with our [interactive demo](../).
