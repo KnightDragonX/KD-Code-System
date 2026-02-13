@@ -1,15 +1,15 @@
-name: CI/CD Pipeline for KD-Code System
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v3
     
@@ -17,51 +17,60 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Run unit tests
+    - name: Lint with flake8
       run: |
+        pip install flake8
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Test with pytest
+      run: |
+        pip install pytest
         python -m pytest test_kd_code.py -v
-        
-    - name: Run integration tests
-      run: |
         python -m pytest test_e2e.py -v
-        
-    - name: Run security scan
-      run: |
-        pip install bandit
-        bandit -r . -f json -o bandit-report.json || true
 
   build-and-deploy:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
     - uses: actions/checkout@v3
     
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-      
-    - name: Login to DockerHub
-      uses: docker/login-action@v2
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-    
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        file: ./Dockerfile
-        push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/kd-code-system:latest
-        
-    - name: Deploy to production
+        python-version: '3.9'
+
+    - name: Install dependencies
       run: |
-        # Deployment commands would go here
-        echo "Deploying to production..."
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install docker-compose
+
+    - name: Build Docker image
+      run: |
+        docker build -t kd-code-system:latest .
+
+    - name: Run security scan
+      run: |
+        # Install and run a basic security scan
+        pip install bandit
+        bandit -r . -f json -o bandit-report.json || true
+
+    - name: Deploy to staging (if needed)
+      run: |
+        # Add deployment commands here based on your infrastructure
+        echo "Deploying to staging environment..."
+        
+    - name: Notify on successful deployment
+      run: |
+        echo "Deployment successful!"
