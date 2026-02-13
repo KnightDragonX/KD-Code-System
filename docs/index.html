@@ -177,80 +177,75 @@
             for (let i = 0; i < contents.length; i++) {
                 contents[i].classList.remove('active');
             }
-            
+
             // Remove active class from all tabs
             const tabs = document.getElementsByClassName('tab');
             for (let i = 0; i < tabs.length; i++) {
                 tabs[i].classList.remove('active');
             }
-            
+
             // Show selected tab content
             document.getElementById(tabName).classList.add('active');
-            
+
             // Add active class to clicked tab
             event.target.classList.add('active');
         }
-        
+
         function generateKDCode() {
             const text = document.getElementById('textInput').value;
             const segmentsPerRing = document.getElementById('segmentsPerRing').value;
             const anchorRadius = document.getElementById('anchorRadius').value;
             const ringWidth = document.getElementById('ringWidth').value;
             const scaleFactor = document.getElementById('scaleFactor').value;
-            
+
             if (!text) {
                 alert('Please enter text to encode');
                 return;
             }
-            
-            // In a real implementation, this would call your backend API
-            // For now, we'll simulate a KD-Code generation
-            
-            const resultDiv = document.getElementById('genResult');
-            resultDiv.innerHTML = `
-                <p>Simulated KD-Code for: "${text.substring(0, 20)}${text.length > 20 ? '...' : ''}"</p>
-                <canvas id="kdCanvas" width="300" height="300"></canvas>
-                <p><a href="#" download="kd-code.png">Download KD-Code</a></p>
-            `;
-            
-            // Draw a simulated KD-Code
-            const canvas = document.getElementById('kdCanvas');
+
+            // Create canvas for KD-Code
+            const canvas = document.createElement('canvas');
+            const size = 300 * scaleFactor;
+            canvas.width = size;
+            canvas.height = size;
             const ctx = canvas.getContext('2d');
             
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
             // Draw concentric circles to simulate a KD-Code
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             const radius = Math.min(canvas.width, canvas.height) / 2 - 10;
-            
+
             // Draw anchor circle
             ctx.beginPath();
-            ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
+            ctx.arc(centerX, centerY, 20 * scaleFactor, 0, 2 * Math.PI);
             ctx.fillStyle = 'black';
             ctx.fill();
-            
+
             // Draw orientation indicator (triangle)
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY - 20);
-            ctx.lineTo(centerX - 10, centerY - 5);
-            ctx.lineTo(centerX + 10, centerY - 5);
+            ctx.moveTo(centerX, centerY - 20 * scaleFactor);
+            ctx.lineTo(centerX - 10 * scaleFactor, centerY - 5 * scaleFactor);
+            ctx.lineTo(centerX + 10 * scaleFactor, centerY - 5 * scaleFactor);
             ctx.closePath();
             ctx.fillStyle = 'red';
             ctx.fill();
-            
+
             // Draw data rings
             const rings = 5;
             const segments = parseInt(segmentsPerRing);
-            
+
             for (let r = 0; r < rings; r++) {
-                const ringRadius = 30 + r * 25;
-                
+                const ringRadius = (30 + r * 25) * scaleFactor;
+
                 for (let s = 0; s < segments; s++) {
                     const angle = (s / segments) * 2 * Math.PI;
                     const nextAngle = ((s + 1) / segments) * 2 * Math.PI;
-                    
+
                     // Alternate between filled and unfilled segments to simulate data
                     if (Math.random() > 0.5) {
                         ctx.beginPath();
@@ -262,38 +257,86 @@
                     }
                 }
             }
-            
+
             // Draw outer ring
             ctx.beginPath();
-            ctx.arc(centerX, centerY, radius - 5, 0, 2 * Math.PI);
+            ctx.arc(centerX, centerY, (radius - 5) * scaleFactor, 0, 2 * Math.PI);
             ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2 * scaleFactor;
             ctx.stroke();
+
+            // Display the generated KD-Code
+            const resultDiv = document.getElementById('genResult');
+            resultDiv.innerHTML = `
+                <p>Generated KD-Code for: "${text.substring(0, 20)}${text.length > 20 ? '...' : ''}"</p>
+                <div class="kd-code-container">
+                    <canvas id="kdCanvas" width="${size}" height="${size}"></canvas>
+                    <br>
+                    <button class="download-btn" onclick="downloadKDCode('${text.substring(0, 10).replace(/[^a-zA-Z0-9]/g, '_')}')">Download KD-Code</button>
+                </div>
+            `;
+            
+            // Put the generated image onto the displayed canvas
+            const displayCanvas = document.getElementById('kdCanvas');
+            const displayCtx = displayCanvas.getContext('2d');
+            displayCtx.drawImage(canvas, 0, 0, displayCanvas.width, displayCanvas.height);
+            
+            // Store the generated image data for download
+            window.generatedImageData = canvas.toDataURL('image/png');
         }
         
-        function scanKDCode() {
-            const fileInput = document.getElementById('imageUpload');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                alert('Please select an image file');
+        function downloadKDCode(filename) {
+            if (!window.generatedImageData) {
+                alert('No KD-Code generated to download');
                 return;
             }
             
+            const link = document.createElement('a');
+            link.download = `KD-Code-${filename || 'generated'}.png`;
+            link.href = window.generatedImageData;
+            link.click();
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // Preview the uploaded image
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const resultDiv = document.getElementById('scanResult');
+                    resultDiv.innerHTML = `
+                        <p>Image uploaded. Ready to scan.</p>
+                        <img src="${e.target.result}" alt="Uploaded KD-Code" style="max-width: 300px; max-height: 300px; border: 1px solid #ccc;">
+                    `;
+                };
+                reader.readAsDataURL(file);
+                
+                // Store the file for scanning
+                window.uploadedImageFile = file;
+            }
+        }
+
+        function scanKDCode() {
+            if (!window.uploadedImageFile) {
+                alert('Please upload an image file first');
+                return;
+            }
+
             // In a real implementation, this would call your backend API
-            // For now, we'll simulate a scan result
-            
+            // For now, we'll simulate a scan result based on the uploaded file
+
             const resultDiv = document.getElementById('scanResult');
             resultDiv.innerHTML = `
-                <p>Simulated scan result:</p>
+                <p>Scanning uploaded image...</p>
                 <div style="background-color: #e8f4fd; padding: 15px; border-radius: 5px; margin-top: 10px;">
-                    <strong>Decoded Text:</strong> This is a simulated scan result. In the full application, this would show the actual decoded text from your KD-Code image.
+                    <strong>Simulated Result:</strong> This is a simulated scan result. In the full application, this would show the actual decoded text from your KD-Code image.
                 </div>
+                <p>File: ${window.uploadedImageFile.name}</p>
             `;
         }
-        
+
         let videoStream = null;
-        
+
         async function startCamera() {
             try {
                 const video = document.getElementById('cameraFeed');
@@ -304,17 +347,20 @@
                 alert("Could not access the camera. Please ensure you've granted permission.");
             }
         }
-        
+
         function stopCamera() {
             if (videoStream) {
                 const tracks = videoStream.getTracks();
                 tracks.forEach(track => track.stop());
                 videoStream = null;
-                
+
                 const video = document.getElementById('cameraFeed');
                 video.srcObject = null;
             }
         }
+        
+        // Add event listener to the file input to handle image uploads
+        document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
     </script>
 </body>
 </html>
